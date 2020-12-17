@@ -1,0 +1,48 @@
+---
+- hosts: all 
+  gather_facts: true
+  remote_user: root
+  
+  tasks:
+  
+   - name: "Reload IPS service" 
+     service: "name=svc:/application/pkg/server:solaris state=reloaded"
+     when: ansible_hostname=="solaris-ansible"
+     tags: tag-1,always
+     
+   - name: "Set publisher for target hosts" 
+     shell: pkg set-publisher -G '*' -g http://192.168.123.198:80/ solaris
+     when: ansible_hostname!="solaris-ansible"
+     tags: tag-2,always
+     
+   - name: "waiting for refreshing IPS" 
+     shell: sleep 40
+     tags: tag-3,always
+ 
+   - name: "Install Package {{pkgname}}" 
+     command: "pkg install -nv {{pkgname}}"
+     notify:
+      - Pkg-Install-Result
+     tags: PkgIn,never 
+      
+   - name: "Upgrading Package {{pkgname}}" 
+     command: "pkg update -nv {{pkgname}}"
+     notify:
+      - Pkg-Upgrade-Result
+     tags: PkgUp,never
+  
+   - name: "Operating system patch" 
+     command: "pkg update -nv"   ###pkg update --accept
+     notify:
+      - OS-Upgrade-Result
+     tags: OSpatch,never
+     
+  handlers:
+   - name: Pkg-Upgrade-Result
+     debug: msg="The software {{pkgname}} upgradation was completed"  
+         
+   - name: Pkg-Install-Result
+     debug: msg="The software {{pkgname}} installation is complete"
+     
+   - name: OS-Upgrade-Result
+     debug: msg="Operating system upgradation/Patching was completed" 

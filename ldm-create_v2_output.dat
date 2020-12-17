@@ -1,0 +1,146 @@
+ ./ldm-create.yml.24nov2020
+[WARNING]: Skipping plugin (/usr/lib/python2.7/site-
+packages/ansible/plugins/connection/accelerate.py) as it seems to be invalid: cannot
+import name key_for_hostname
+domain name: guest
+vcpu? [2]: 
+memory in G? [8]: 10
+rpool disk channel ie: c0t50CCA03C45215Cd0 : c0t5000CCA016399150d0
+What is dpool disk channel ie: c0t50CCA03C45215Cd0  [NO]: 
+vnet#? [0]: 
+vnet vlan? [933]: 944
+
+PLAY [all] ******************************************************************************
+
+TASK [Gathering Facts] ******************************************************************
+[WARNING]: Platform sunos on host server1 is using the discovered Python interpreter at
+/usr/bin/python, but future installation of another Python interpreter could change
+this. See
+https://docs.ansible.com/ansible/2.9/reference_appendices/interpreter_discovery.html for
+more information.
+ok: [server1]
+
+TASK [create domain] ********************************************************************
+failed: [server1] (item=ldm remove-spconfig LDM_guest) => {"ansible_loop_var": "item", "changed": true, "cmd": ["ldm", "remove-spconfig", "LDM_guest"], "delta": "0:00:00.385850", "end": "2020-12-10 15:22:20.376139", "item": "ldm remove-spconfig LDM_guest", "msg": "non-zero return code", "rc": 1, "start": "2020-12-10 15:22:19.990289", "stderr": "Error: Operation failed because there is no configuration\nnamed \"LDM_guest\" on the system controller", "stderr_lines": ["Error: Operation failed because there is no configuration", "named \"LDM_guest\" on the system controller"], "stdout": "", "stdout_lines": []}
+changed: [server1] => (item=ldm add-domain guest)
+...ignoring
+
+TASK [assign cpu and memory] ************************************************************
+changed: [server1] => (item=ldm add-vcpu 2 guest)
+changed: [server1] => (item=ldm add-memory 10G guest)
+
+TASK [assign network with vlan] *********************************************************
+changed: [server1]
+
+TASK [assign network without vlan] ******************************************************
+skipping: [server1]
+
+TASK [set auto-boot and boot device] ****************************************************
+changed: [server1] => (item=ldm set-var auto-boot\?=false guest)
+changed: [server1] => (item=ldm set-var boot-device=vdisk0 guest)
+
+TASK [assign rpool disk] ****************************************************************
+changed: [server1] => (item=ldm add-vdsdev /dev/dsk/c0t5000CCA016399150d0s2 guest_rpool@vds0)
+changed: [server1] => (item=ldm add-vdisk id=0 vdisk0 guest_rpool@vds0 guest)
+
+TASK [assign dpool disk] ****************************************************************
+skipping: [server1] => (item=ldm add-vdsdev /dev/dsk/NOs2 guest_dpool@vds0) 
+skipping: [server1] => (item=ldm add-vdisk id=1 vdisk1 guest_dpool@vds0 guest) 
+
+TASK [add iso] **************************************************************************
+changed: [server1] => (item=ldm add-vdsdev options=ro /export/home/oadm/sol-11_4-text-sparc.iso guest_iso@vds0)
+changed: [server1] => (item=ldm add-vdisk id=15 vcdrom guest_iso@vds0 guest)
+
+TASK [start domain] *********************************************************************
+changed: [server1] => (item=ldm bind guest)
+changed: [server1] => (item=ldm start guest)
+changed: [server1] => (item=ldm add-spconfig LDM_guest)
+
+TASK [list domain] **********************************************************************
+changed: [server1]
+
+TASK [debug] ****************************************************************************
+ok: [server1] => {
+    "msg": "NAME             STATE      FLAGS   CONS    VCPU  MEMORY   UTIL  NORM  UPTIME\nguest            active     -t----  5003    2     10G       50%   50%  17s"
+}
+
+PLAY RECAP ******************************************************************************
+server1                    : ok=10   changed=8    unreachable=0    failed=0    skipped=2    rescued=0    ignored=1   
+
+
+==========================================================================================
+
+
+root@ovmaida168:~# ldm list
+NAME             STATE      FLAGS   CONS    VCPU  MEMORY   UTIL  NORM  UPTIME
+primary          active     -n-cv-  UART    32    32G      0.7%  0.7%  24d 4h 33m
+ccasmts003d      active     -n----  5001    32    16G      0.2%  0.2%  10d 3h 46m
+guest            active     -t----  5003    2     10G       50%   50%  24s
+ovmt168          active     -n----  5002    8     8G       0.1%  0.1%  21h 40m
+
+# ldm list -l guest
+NAME             STATE      FLAGS   CONS    VCPU  MEMORY   UTIL  NORM  UPTIME
+guest            active     -t----  5003    2     10G       50%   50%  1m
+
+SOFTSTATE
+    OpenBoot Running
+
+UUID
+    430dfdc1-2ac4-467a-87d8-e31cf71c2ee8
+
+MAC
+    00:14:4f:fb:e4:03
+
+HOSTID
+    0x84fbe403
+
+CONTROL
+    failure-policy=ignore
+    extended-mapin-space=on
+    cpu-arch=native
+    rc-add-policy=
+    shutdown-group=15
+    perf-counters=htstrand
+    boot-policy=warning
+    effective-max-pagesize=256MB
+    hardware-max-pagesize=2GB
+
+DEPENDENCY
+    master= 
+
+CORE
+    CID    CPUSET
+    9      (72, 73)
+
+VCPU
+    VID    PID    CID    UTIL NORM STRAND
+    0      72     9      100% 100%   100%
+    1      73     9      0.0% 0.0%   100%
+
+MEMORY
+    RA               PA               SIZE            
+    0x30000000       0xe30000000      10G
+
+CONSTRAINT
+
+
+VARIABLES
+    auto-boot?=false
+    boot-device=vdisk0
+
+NETWORK
+    NAME         SERVICE                MACADDRESS          PVID|PVLAN|VIDs
+    ----         -------                ----------          ---------------
+    vnet0        vsw0@primary           00:14:4f:fa:1f:f3   944|--|--    
+
+DISK
+    NAME         VOLUME                 TOUT ID   DEVICE  SERVER         MPGROUP       
+    vdisk0       guest_rpool@vds0            0    disk@0  primary                      
+    vcdrom       guest_iso@vds0              15   disk@15 primary                      
+
+VCONS
+    NAME         SERVICE                PORT   LOGGING
+    guest        vcc0@primary           5003   on   
+
+
+

@@ -1,0 +1,80 @@
+#!/bin/ansible-playbook
+#--ask-become-pass 
+- hosts: all
+  vars_prompt:
+  - name : domainname
+    prompt: "domain name"
+    private: no
+  - name : vcpu
+    default: 2
+    prompt: "vcpu?"
+    private: no
+  - name : memory
+    default: 8
+    prompt: "memory in G?"
+    private: no
+  - name : rpool
+    prompt: "rpool disk channel ie: c0t50CCA03C45215Cd0 " 
+    private: no
+  - name : dpool
+    default: "NO" 
+    prompt: "What is dpool disk channel ie: c0t50CCA03C45215Cd0 "
+    private: no
+  - name : network
+    default: 0
+    prompt: "vnet#?"
+    private: no
+  - name : vlan
+    default: 933
+    prompt: "vnet vlan?"
+    private: no
+  tasks:
+  - name: create domain
+    command: "{{ item }}"
+    with_items:
+    - ldm remove-spconfig LDM_{{domainname}}
+    - ldm add-domain {{domainname}}
+    ignore_errors: yes
+  - name: assign cpu and memory
+    command: "{{ item }}"
+    with_items:
+    - ldm add-vcpu {{ vcpu }} {{domainname}}
+    - ldm add-memory {{ memory }}G {{domainname}}
+  - name:  assign network with vlan
+    command:  ldm add-vnet pvid={{vlan}} id={{network}} vnet{{ network }} vsw0 {{domainname}}
+    when: vlan != "0"
+  - name:  assign network without vlan
+    command:  ldm add-vnet id={{network}} vnet{{ network }} vsw0 {{domainname}}
+    when: vlan == "0"
+  - name:  set auto-boot and boot device
+    command: "{{ item }}" 
+    with_items:
+    - ldm set-var auto-boot\?=false {{domainname}}
+    - ldm set-var boot-device=vdisk0 {{domainname}}
+  - name:  assign rpool disk
+    command: "{{ item }}"
+    with_items:
+    - ldm add-vdsdev /dev/dsk/{{rpool}}s2 {{domainname}}_rpool@vds0
+    - ldm add-vdisk id=0 vdisk0 {{domainname}}_rpool@vds0 {{domainname}}
+  - name:  assign dpool disk
+    when: dpool != "NO"
+    command: "{{ item }}"
+    with_items:
+    - ldm add-vdsdev /dev/dsk/{{dpool}}s2 {{domainname}}_dpool@vds0
+    - ldm add-vdisk id=1 vdisk1 {{domainname}}_dpool@vds0 {{domainname}}
+  - name:  add iso
+    command: "{{ item }}"
+    with_items:
+    - ldm add-vdsdev options=ro /export/home/oadm/sol-11_4-text-sparc.iso {{domainname}}_iso@vds0
+    - ldm add-vdisk id=15 vcdrom {{domainname}}_iso@vds0 {{domainname}}
+  - name:  start domain
+    command: "{{ item }}"
+    with_items:
+    - ldm bind {{domainname}}
+    - ldm start {{domainname}}
+    - ldm add-spconfig LDM_{{domainname}}
+  - name: list domain
+    command: ldm list {{domainname}} 
+    register: mymotd
+  - debug: msg="{{ mymotd.stdout }}"
+

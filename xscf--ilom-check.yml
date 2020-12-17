@@ -1,0 +1,15 @@
+#!/bin/ansible-playbook
+#--ask-become-pass 
+- hosts: MX000
+  tasks:
+  - name: HOSTNAME
+    command: show hostname -a
+  - name: XSCF CHECK
+    command: showstatus
+   
+- hosts: ILOM
+  tasks:
+  - name:  HSOTNAME
+    command:  show /SP/ hostname
+  - name:  show faulyt
+    command: show faulty
